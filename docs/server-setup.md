@@ -150,3 +150,24 @@ hostname -f
 ```
 
 Ожидается `devops-vm.devops.local`.
+
+## 8. Веб-сервер
+
+- Пакет: `nginx` из репозитория Ubuntu (не собирается из исходников). Установка: `sudo apt update && sudo apt install -y nginx`.
+- Конфигурация ресурса: `/etc/nginx/sites-available/devops-site`. Включена ссылкой `/etc/nginx/sites-enabled/devops-site`. Ссылка на стандартный ресурс `/etc/nginx/sites-enabled/default` удалена, файл в `sites-available` сохранён.
+- Каталог ресурса: `/var/www/devops-site`, владелец `devops:devops`. Каталог `755`, файлы `644`. Эти права выставляет доставка: `rsync -avz --delete --chmod=D755,F644`.
+- HTTP (порт 80) отвечает `301` на `https://$host$request_uri`. HTTPS слушает 443, протоколы TLSv1.2 и TLSv1.3. Заголовок HSTS не задаётся.
+- Сертификат: `/etc/ssl/certs/devops.crt`, права `644`, владелец `root`. Закрытый ключ: `/etc/ssl/private/devops.key`, права `600`, владелец `root`. В сертификате SAN `DNS:devops.local`, срок 365 дней. Команда:
+
+```
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout /etc/ssl/private/devops.key \
+  -out /etc/ssl/certs/devops.crt \
+  -subj "/CN=devops.local" \
+  -addext "subjectAltName=DNS:devops.local"
+sudo chmod 600 /etc/ssl/private/devops.key
+sudo chmod 644 /etc/ssl/certs/devops.crt
+```
+
+- Применение конфигурации: `sudo nginx -t && sudo systemctl reload nginx`. Порты 80 и 443 уже разрешены в UFW. Профиль `Nginx Full` не добавлять.
+- Проверка с хоста: `curl --cacert ~/devops.crt -I https://devops.local`. Копия сертификата снимается так: `scp devops:/etc/ssl/certs/devops.crt ~/devops.crt`. Ключ с сервера не копируется.
