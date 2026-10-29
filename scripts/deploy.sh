@@ -23,7 +23,7 @@ if [[ ! -f "${LOCAL_DIR}index.html" ]]; then
 fi
 
 # Незафиксированные правки отслеживаются. Неотслеживаемые файлы отчётов в docs/ доставку не блокируют.
-dirty="$(git status --porcelain --untracked-files=all | grep -v -E '^\?\? docs/' || true)"
+dirty="$(git status --porcelain --untracked-files=all | grep -v -E '^\?\? "?docs/' || true)"
 if [[ -n "$dirty" ]]; then
     echo "есть незафиксированные изменения, доставка отменена" >&2
     exit 1
