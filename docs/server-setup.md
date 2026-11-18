@@ -171,3 +171,13 @@ sudo chmod 644 /etc/ssl/certs/devops.crt
 
 - Применение конфигурации: `sudo nginx -t && sudo systemctl reload nginx`. Порты 80 и 443 уже разрешены в UFW. Профиль `Nginx Full` не добавлять.
 - Проверка с хоста: `curl --cacert ~/devops.crt -I https://devops.local`. Копия сертификата снимается так: `scp devops:/etc/ssl/certs/devops.crt ~/devops.crt`. Ключ с сервера не копируется.
+
+## 9. Контейнеризация
+
+- Docker Engine установлен из официального репозитория `https://download.docker.com/linux/ubuntu` (пакеты `docker-ce`, `docker-ce-cli`, `containerd.io`, `docker-buildx-plugin`, `docker-compose-plugin`). Пакет `docker.io` не используется. Версия Server на момент настройки: 29.9.2. Compose plugin: v5.6.1.
+- Учётная запись `devops` входит в группу `docker` и запускает контейнеры без `sudo`. Участник группы docker фактически получает права root через привилегированные контейнеры — других пользователей в группу не добавлять.
+- Проект на сервере: `/home/devops/app`. Доставка с хоста: `rsync -avz --delete --exclude=.env app/ devops:app/`.
+- Файл `/home/devops/app/.env` создаётся только на сервере (`cp .env.example .env`, пароль через `openssl rand -hex 16` или аналог), права `600`. В репозиторий не попадает. Шаблон — `app/.env.example`.
+- Compose: сервисы `app` и `db` (`postgres:16-alpine`), сеть `backend`, том `db_data`. Публикация приложения: `127.0.0.1:5000:5000`. Порт СУБД не публикуется.
+- Обратный прокси: в HTTPS-блоке `/etc/nginx/sites-available/devops-site` расположение `location /app/` с `proxy_pass http://127.0.0.1:5000/;` и заголовками Host, X-Real-IP, X-Forwarded-For, X-Forwarded-Proto. Статический ресурс `/` сохраняется.
+- Запуск: `cd ~/app && docker compose up -d --build`. Проверка: `curl --cacert ~/devops.crt https://devops.local/app/` и `https://devops.local/app/health`.
