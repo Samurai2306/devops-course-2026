@@ -42,5 +42,13 @@ check "Сертификат действителен ещё не менее 30 �
 writable="$(sudo find /var/www/devops-site -perm -o+w -print | wc -l | tr -d '[:space:]')"
 check "В каталоге ресурса нет файлов, доступных для записи всем" "0" "$writable"
 check "Права закрытого ключа равны 600" "600" "$(sudo stat -c '%a' /etc/ssl/private/devops.key)"
+echo "[5] Контейнеризация"
+check "Служба docker активна" "active" "$(systemctl is-active docker || true)"
+db_health="$(docker inspect -f '{{.State.Health.Status}}' app-db-1 2>/dev/null || echo missing)"
+check "Контейнер СУБД находится в состоянии healthy" "healthy" "$db_health"
+bad_ports="$(ss -tln | awk '($4 ~ /:5000$/ || $4 ~ /:5432$/) && $4 !~ /^127\.0\.0\.1:/ && $4 !~ /^\[::1\]:/ {print $4}' | wc -l | tr -d '[:space:]')"
+check "Порты 5000 и 5432 не прослушиваются вне 127.0.0.1" "0" "$bad_ports"
+env_mode="$(stat -c '%a' /home/devops/app/.env 2>/dev/null || echo missing)"
+check "Права файла ~/app/.env равны 600" "600" "$env_mode"
 echo "Пройдено: $PASS, не пройдено: $FAIL"
 [[ $FAIL -eq 0 ]] && exit 0 || exit 1
